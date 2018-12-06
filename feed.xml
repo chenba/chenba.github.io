@@ -1,4 +1,40 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2018-11-13T14:53:03-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Infrequent Updates</title><subtitle>A weblog.</subtitle><entry><title type="html">Giving Windows Subsystem for Linux Another Go</title><link href="http://localhost:4000/2018/11/13/WSL.html" rel="alternate" type="text/html" title="Giving Windows Subsystem for Linux Another Go" /><published>2018-11-13T12:40:00-06:00</published><updated>2018-11-13T12:40:00-06:00</updated><id>http://localhost:4000/2018/11/13/WSL</id><content type="html" xml:base="http://localhost:4000/2018/11/13/WSL.html">&lt;p&gt;Recently I decided to give Windows Subsystem for Linux (WSL) another try.  Actually, it was when I wanted to set up Jekyll for this site.  I tried WSL on its initial release but didn’t stick with it.  I was aware that it has steadily improved since then.&lt;/p&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.8.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2018-12-06T17:35:22-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Infrequent Updates</title><subtitle>A weblog.</subtitle><entry><title type="html">Undo/Redo in Firefox Screenshots</title><link href="http://localhost:4000/2018/12/06/undo-redo.html" rel="alternate" type="text/html" title="Undo/Redo in Firefox Screenshots" /><published>2018-12-06T16:18:41-06:00</published><updated>2018-12-06T16:18:41-06:00</updated><id>http://localhost:4000/2018/12/06/undo-redo</id><content type="html" xml:base="http://localhost:4000/2018/12/06/undo-redo.html">&lt;p&gt;One of the features I implemented for &lt;a href=&quot;https://screenshots.firefox.com/&quot;&gt;Firefox Screenshots&lt;/a&gt; is the undo/redo in the image editor on the web site.  I’ll explain how that works.&lt;/p&gt;
+
+&lt;p&gt;(This post will not include any code.  Firefox Screenshots is open source, so visit &lt;a href=&quot;https://github.com/mozilla-services/screenshots/&quot;&gt;its repo&lt;/a&gt; if you want the code.)&lt;/p&gt;
+
+&lt;p&gt;There are at least two obvious but less than optimal solutions:&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;keep a full image of every edit&lt;/li&gt;
+  &lt;li&gt;record and replay user edit commands&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;keep-all-the-images&quot;&gt;Keep All the Images&lt;/h3&gt;
+
+&lt;p&gt;This is the simplest approach.  It’s obvious and obviously bad: keeping all the images around will utilize a lot of memory.&lt;/p&gt;
+
+&lt;h3 id=&quot;replay-user-commands&quot;&gt;Replay User Commands&lt;/h3&gt;
+
+&lt;p&gt;Since the editor know all the editing actions performed by the user, it could save them and replay them back to achieve undo/redo.  This approach definitely will use far less memory than keeping &lt;code class=&quot;highlighter-rouge&quot;&gt;n&lt;/code&gt; canvas elements around.  And it should work well when there are very few edits.&lt;/p&gt;
+
+&lt;p&gt;But it will not scale.  If a user made &lt;code class=&quot;highlighter-rouge&quot;&gt;n&lt;/code&gt; edits, and perform an undo, then the editor would need to replay &lt;code class=&quot;highlighter-rouge&quot;&gt;n-1&lt;/code&gt; commands to achieve it.  (It also needs to be done in the background while the user get to view a lovely spinner…)  This is problematic when &lt;code class=&quot;highlighter-rouge&quot;&gt;n&lt;/code&gt; is large enough for the given computer.&lt;/p&gt;
+
+&lt;h3 id=&quot;maybe-a-compromise&quot;&gt;Maybe a Compromise?&lt;/h3&gt;
+
+&lt;p&gt;What if we combine the two?  The editor could keep some full size images as key frames, and then replay commands from a key frame to achieve the desired undo/redo.  This reduces memory usage and improves user-perceived latency.&lt;/p&gt;
+
+&lt;p&gt;Now what should be the frequency of the key frames?  The crop action nautrally produces key frames, so those should be used.  Of course, the user might not crop the image at all, so the editor will still need to save a key frame periodically.  With this approach, when the user asks for an undo at &lt;code class=&quot;highlighter-rouge&quot;&gt;x&lt;/code&gt;, and if there’s a key frame saved at &lt;code class=&quot;highlighter-rouge&quot;&gt;x-5&lt;/code&gt;, then the editor only need to replay four edit commands to accomplish the undo action.&lt;/p&gt;
+
+&lt;p&gt;So we have some key frames and all the edit commands.  And we need to figure out which key frame to use, and how many commands to replay.  And when to add a key frame.  And if the user make an edit after a undo/redo, then we need to drop the key frames and recorded commands that are after the applied undo/redo.&lt;/p&gt;
+
+&lt;p&gt;It’s getting just a little complicated.&lt;/p&gt;
+
+&lt;h3 id=&quot;making-a-difference&quot;&gt;Making a Difference&lt;/h3&gt;
+
+&lt;p&gt;Without a lot of data on user image editing behavior, I want to keep it simple, at least for the initial implementation.  (And I figure that people won’t be doing &lt;em&gt;that&lt;/em&gt; much editing with a simple web based image editor.)  That leads us back to the first approach.&lt;/p&gt;
+
+&lt;p&gt;But it’s not necessary to save the &lt;em&gt;full&lt;/em&gt; size image on every edit; the editor could save only the affected area in order to perform the undo and redo (which is an undo of an undo).  For crops, full images are saved.&lt;/p&gt;
+
+&lt;p&gt;Saving and applying “diffs” is what ended up in the Firefox Screenshots annotations editor for undo/redo.&lt;/p&gt;</content><author><name></name></author><summary type="html">In which I discuss implementing undo/redo in Firefox Screenshots.</summary></entry><entry><title type="html">Giving Windows Subsystem for Linux Another Go</title><link href="http://localhost:4000/2018/11/13/WSL.html" rel="alternate" type="text/html" title="Giving Windows Subsystem for Linux Another Go" /><published>2018-11-13T12:40:00-06:00</published><updated>2018-11-13T12:40:00-06:00</updated><id>http://localhost:4000/2018/11/13/WSL</id><content type="html" xml:base="http://localhost:4000/2018/11/13/WSL.html">&lt;p&gt;Recently I decided to give Windows Subsystem for Linux (WSL) another try.  Actually, it was when I wanted to set up Jekyll for this site.  I tried WSL on its initial release but didn’t stick with it.  I was aware that it has steadily improved since then.&lt;/p&gt;
 
 &lt;p&gt;It’s good enough.  The filesystem performance &lt;em&gt;feels&lt;/em&gt; slow.  I don’t have hard numbers, but running &lt;code class=&quot;highlighter-rouge&quot;&gt;npm install&lt;/code&gt; on the same project seems to take much longer on WSL than on a VirtualBox VM.&lt;/p&gt;
 
